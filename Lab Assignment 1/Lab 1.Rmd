@@ -10,11 +10,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(dplyr)
 library(openxlsx)
+library(readxl)
 
 ```
+# Part I
+
+## Question 1.1 a) and 1.1 b)
+
+Below are the prints with the head and tail of the dataset as well as the class of each variable
 
 ```{r Code Body, warning=FALSE}
-
 
 #Reading in and checking the coffee data
 survey_df <- read.csv("GACTT_RESULTS_ANONYMIZED_HW1.csv")
@@ -24,6 +29,14 @@ print(tail(survey_df,4))
 print(sapply(survey_df,class))
 
 survey_df$party <- factor(survey_df$party, levels = c("Democrat", "Republican", "Independent", "No affiliation"))
+
+```
+
+## Question 1.1 c)
+
+Below is a histogram showing the relationship between coffee consumption and party affiliation
+
+```{r, warning=FALSE}
 
 #Plotting a histogram of cups/day by political party
 ggplot(survey_df, aes(x = cups_num, fill = party)) +
@@ -46,11 +59,25 @@ ggplot(survey_df, aes(x = cups_num, fill = party)) +
        fill = "Political Party") +
   theme_minimal()
 
+```
+
+## Question 2.1 and 2.2 a)
+
+Below is the code to load the zip code metadata and merge the survey results
+
+```{r, warning=FALSE}
+
 #Reading in, cleaning, and merging geographic data
 zip_df <- read.csv("zip_code_database.csv")
 survey_df$zip <- as.integer(survey_df$zip)
 joined_df <- left_join(survey_df,zip_df, by = "zip")
+```
 
+## Question 2.2 b) and 2.2 c)
+
+Below is the print giving the number of unmatched zip codes (which is 117)
+
+```{r, warning=FALSE}
 print(sum(!(joined_df$zip %in% zip_df$zip)))
 
 #Function to calculate the mode of a column
@@ -61,6 +88,14 @@ calculate_mode <- function(x) {
   paste(modes, collapse = ", ")
 }
 
+```
+
+## Question 3.1
+
+The below section creates the survey_state data frame with the average coffee consumption (avg_cups), preferred homebrew method (preferred_method) and political affiliations (pct_dem, pct_rep) for each state.
+
+```{r, warning=FALSE}
+
 #Creating a new data frame with results by state
 survey_state <- group_by(joined_df, joined_df$state) %>% summarize(avg_cups = mean(cups_num, na.rm=TRUE),
                                                                  preferred_method = calculate_mode(home_brew),
@@ -68,6 +103,15 @@ survey_state <- group_by(joined_df, joined_df$state) %>% summarize(avg_cups = me
                                                                  pct_rep = 100*sum(party == "Republican", na.rm =TRUE)/length(party),
                                                                  num_responses = n())
 colnames(survey_state)[colnames(survey_state) == "joined_df$state"] <- "state_abr"
+
+```
+
+# Part II
+## Question 1.1 and 1.2
+
+The below section reads in the election results data and ensures that the numeric columns are properly formatted.
+
+```{r, warning=FALSE}
 
 #Reading in and cleaning election data
 election_df <- read.csv("election_2024.csv")
@@ -78,6 +122,14 @@ pct_columns <- c(4,7,10)
 election_df[,int_columns] <- sapply(election_df[,int_columns], function(x) as.integer(gsub(",","",x)))
 election_df[,pct_columns] <- sapply(election_df[,pct_columns], function(x) (1/100)*as.numeric(gsub("%","",x)))
 election_df[is.na(election_df)] <- 0
+
+```
+
+## Question 2.1
+
+The below section merges the survey data with the election data by state (it primarily is dealing with the fact that in one data set we have state names, in the other we have abbreviations)
+
+```{r, warning=FALSE}
 
 #Cleaning up the states and giving them the same labels
 election_df <- election_df[!election_df$state %in% c("CD-1","CD-2","CD-3"),]
@@ -109,6 +161,13 @@ election_df$state_abr <- sapply(election_df$state, function(x) state_abr_df$abr[
 
 survey_election_df <- left_join(election_df, survey_state, by = "state_abr")
 
+```
+
+## Question 3.1
+
+Below we plot the relationship between share of respondents supporting democrats and Harris vote share. We exclude states with 25 or fewer responses in the survey to handle the fact that their sample sizes are small.
+
+```{r, warning=FALSE}
 #Plotting vote share against survey results for party affiliation and for coffee consumption
 ggplot(data = filter(survey_election_df, num_responses > 25), aes(x = pct_dem, y = harris_votes_share)) +
   geom_point(color = "blue", size = 2, alpha = 0.7) +
@@ -124,6 +183,14 @@ ggplot(data = filter(survey_election_df, num_responses > 25), aes(x = pct_dem, y
     axis.title = element_text(size = 12),
     axis.text = element_text(size = 10)
   )
+
+```
+
+# Question 3.2
+
+Below are a series of scatterplots showing the relationship between daily coffee consumption and voting outcomes by presidential candidate. Visual examination of the scatterplots showing the relationship between surveyed coffee consumption and vote share indicates that there is no meaningful relationship between these two variables. For every category of vote share it is the case that there is no observable trend related to the average number of cups per day.
+
+```{r, warning = FALSE}
 
 ggplot(data = filter(survey_election_df, num_responses > 25), aes(x = avg_cups, y = harris_votes_share)) +
   geom_point(color = "blue", size = 2, alpha = 0.7) + 
@@ -170,7 +237,37 @@ ggplot(data = filter(survey_election_df, num_responses > 25), aes(x = avg_cups, 
     axis.text = element_text(size = 10)
   )
 
-write.xlsx(survey_election_df, file = "overview_hw1.xlsx")
 ```
 
-Visual examination of the scatterplots showing the relationship between surveyed coffee consumption and vote share indicates that there is no meaningful relationship between these two variables. For every category of vote share it is the case that there is no observable trend related to the average number of cups per day.
+## 4.1
+
+Below is the code to save the merged dataset as an excel file
+
+```{r, warning = FALSE}
+
+write.xlsx(survey_election_df, file = "overview_hw1.xlsx")
+
+```
+
+# Bonus Questions
+
+Below is the code reading the Google trend data from an excel sheet and identifying in how many states the most popular homebrew method was also the most searched on Google (it was 4). I've also attached below the R markdown file my Python code for retrieving the data.
+
+On examining the data, the Google trend results were extremely consistent from state to state, with "espresso" being the most searched term of the surveyed options in every state. This is likely a function of the particular dynamics of web searching favoring shorter and single-word searches, as well as there being more searches of more general concepts like espresso than more specific multi-word methods. To further explore this we might consider grouping together multiple terms that refer to the same or similar methods, or we might look at more than just the highest rated term. I experienced frequent issues with access to the Google API (you can see in my Python code I had to incorporate some code to handle Google throwing errors and making continuing attempts in order to pull the data) that slowed down my ability to pull the relevant data, so I have left this with the results of the exact question asked in the assignment
+
+```{r, warning=FALSE}
+#Read in from excel and set up the data from the Google Trends API pull (done in Python)
+google_trend_data <- read_excel("coffee_output_2.xlsx", sheet = 1)
+google_trend_data$favorite <- apply(google_trend_data, 1, function(row){
+    colnames(google_trend_data)[which.max(row)]
+})
+google_trend_data$state_abr <- sapply(google_trend_data$geoName, function(x) state_abr_df$abr[state_abr_df$state == x])
+
+#Determine how many of the google trends top searches match the survey favorites
+survey_google_matches <- mapply(grepl, google_trend_data$favorite, survey_election_df$preferred_method)
+num_matches <- sum(survey_google_matches)
+print(head(google_trend_data))
+print("The number of matches by state between the top survey result and most-searched term:")
+print(num_matches)
+```
+

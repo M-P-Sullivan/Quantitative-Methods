@@ -1,6 +1,7 @@
 library(ggplot2)
 library(dplyr)
 library(openxlsx)
+library(readxl)
 
 #Reading in and checking the coffee data
 survey_df <- read.csv("GACTT_RESULTS_ANONYMIZED_HW1.csv")
@@ -157,3 +158,16 @@ ggplot(data = filter(survey_election_df, num_responses > 25), aes(x = avg_cups, 
   )
 
 write.xlsx(survey_election_df, file = "overview_hw1.xlsx")
+
+#Read in from excel and set up the data from the Google Trends API pull (done in Python)
+google_trend_data <- read_excel("coffee_output_2.xlsx", sheet = 1)
+google_trend_data$favorite <- apply(google_trend_data, 1, function(row){
+    colnames(google_trend_data)[which.max(row)]
+})
+google_trend_data$state_abr <- sapply(google_trend_data$geoName, function(x) state_abr_df$abr[state_abr_df$state == x])
+
+#Determine how many of the google trends top searches match the survey favorites
+survey_google_matches <- mapply(grepl, google_trend_data$favorite, survey_election_df$preferred_method)
+num_matches <- sum(survey_google_matches)
+print(head(survey_google_matches))
+print(num_matches)
