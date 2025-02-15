@@ -1,0 +1,211 @@
+---
+title: "Lab Assignment 2 Markdown"
+author: "Michael Sullivan"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE}
+#install.packages("ggplot2")
+#install.packages("dplyr")
+#install.packages("distributions3")
+
+library(ggplot2)
+library(dplyr)
+library(distributions3)
+```
+
+# 1 Data Preparation
+
+Below we load in the data, recode missing values of a_preference to NA and remove them because all of our further analyses for this assignment involve a_preference, so we can safely eliminate the rows with missing values in that column. We also display some summary statistics
+
+```{r}
+
+df <- readRDS("GACTT_RESULTS_ANONYMIZED_HW2.RDS")
+
+#Checking data
+head(df)
+nrow(df)
+sum(df$a_preference==-9, na.rm=TRUE)
+
+#COnverting and removing missing values
+df$a_preference[df$a_preference == -9] <- NA
+df <- df[!is.na(df$a_preference), ]
+head(df)
+table(df$a_preference)
+summary(df$a_preference)
+
+```
+
+# 2 t-test: Coffee Preparation Method & Preference
+
+Below we add an indicator variable for whether someone's favorite drink is pourover. We display some summary table data based on this indicator and then conduct a t-test.\\
+
+Our t-test displays difference of means of 0.39 and finds with p < 0.05 that the mean of the revealed preference for tasting coffee type A is different between those who prefer pourover and those who do not. So we find that the difference is statistically significant and in particular that people who prefer pourover coffee enjoy tasting lot A more than others do.\\
+
+We then visualize the data using a violin plot, which helps to show the full distribution of the data, and a bar chart, which helps to show the two relevant means and visualize their difference.
+
+```{r}
+
+#Creating indicator variable
+df$pourover <- df$favorite_drink == "Pourover"
+sum(df$pourover, na.rm=TRUE)
+sum(is.na(df$pourover))
+sum(is.na(df$favorite_drink))
+
+#Summary and t test statistics
+table(df$a_preference[df$pourover==1])
+table(df$a_preference[df$pourover==0])
+t_result <- t.test(df$a_preference[df$pourover==1], df$a_preference[df$pourover==0])
+t_result
+t_result$estimate[1] - t_result$estimate[2]
+
+#Setup for graphs
+pourover_df <- filter(df, favorite_drink == "Pourover")
+other_df <- filter(df, favorite_drink != "Pourover")
+combined_df <- data.frame(
+  a_preference = c(pourover_df$a_preference, other_df$a_preference),
+  group = c(rep("Pourover", nrow(pourover_df)), rep("Non-Pourover", nrow(other_df)))
+)
+
+ggplot(combined_df, aes(x = group, y = a_preference, fill = group)) +
+  geom_violin(trim = FALSE) +
+  theme_minimal() +
+  labs(title = "Violin Plot of Preference for A, by Pourover Category")
+
+ggplot(combined_df, aes(x = group, y = a_preference, fill = group)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge", alpha = 0.7) +
+  #stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2) +
+  theme_minimal() +
+  labs(title = "Mean Comparison of Preference for A, by Pourover Category")
+
+```
+
+# 3 ANOVA: Coffee Strength & Preference
+
+Below we add a new variable which recodes preferred_strength into three categories. We display summary statistics related to this variable. We then create a new temporary data frame for use on this problem which removes the NA values from this variable so we don't need to remove them individually at every step of the analysis.\\
+
+We then run a one-way ANOVA test to see whether and how preferred_strength predicts a_preference, and we use a bar chart to visualize this relationship. From this we see that the approval of the tasting lot is highest for those whose preferred strength is medium, second highest for those whose preferred strength is strong, and lowest for those whose preferred strength is light. But the ANOVA test indicates that the difference between the groups is not statistically significant at a p<0.05 level.
+
+```{r}
+
+#Adding strength category variable
+strong <- c(4,5)
+medium <- c(3)
+light <- c(1,2)
+
+df <- mutate(df, grouped_preferred_strength = ifelse(
+  preferred_strength %in% strong, "Strong",
+  ifelse(preferred_strength %in% medium, "Medium",
+  ifelse(preferred_strength %in% light, "Light", NA
+  ))))
+
+table(df$grouped_preferred_strength)
+
+sum(is.na(df$grouped_preferred_strength))
+grouped_strength_df <- df[!is.na(df$grouped_preferred_strength),]
+
+#ANOVA test on strength
+anova_result <- aov(a_preference ~ grouped_preferred_strength, data = grouped_strength_df)
+summary(anova_result)
+
+df_summary <- grouped_strength_df %>%
+  group_by(grouped_preferred_strength) %>%
+  summarise(mean = mean(a_preference), se = sd(a_preference)/sqrt(n()))
+
+ggplot(df_summary, aes(x = grouped_preferred_strength, y = mean, fill = grouped_preferred_strength)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  theme_minimal() +
+  labs(title = "ANOVA: Mean Comparisons with Error Bars", x = "Group", y = "Mean Value")
+
+```
+
+# 4 OLS Regression: Comparing Models 
+
+Below we conduct OLS regressions for the same questions that we tested above. First we run a regression for pourover vs. non-pourover and its relationship to preference. This produces the same effect estimate and p-value as the t-test, which we would expect when simply comparing the means of two samples using these two methods.
+
+Next we run a regression with preferred strength as a predictor for preference. Here we do not find a statistically significant relationship, similarly to our result with ANOVA. I argue that regression is the more appropriate method for this task because it is logical to view the strength preference as numerical data in which there is an ordered relationship. While of course we can conceptualize it as categorical for use in an ANOVA, that reduces the amount of information we have about it and ignores the fact that we would expect preference for a strength level of 5 to be more similar to preference for a level of 4 than of 1, which is a property of ordered numerical data and not of categorical data.
+
+```{r}
+#OLS Tests
+model <- lm(df$a_preference ~ df$pourover, data = df)
+summary(model)
+
+model <- lm(df$a_preference ~ df$preferred_strength, data = df)
+summary(model)
+
+```
+
+# 5 Bonus Task: Custom t-test Function
+Below we create a custom t-test function and run tests on it against a variety of data sets, comparing it to the built-in R t test. In all of the tested cases it produces comparable results to the built-in function.
+
+
+```{r, error=TRUE}
+
+#Custom t-test
+my_t_test <- function(x, comparison_mean = 0, tails = "two"){
+  x = x[!is.na(x)]
+  n = length(x)
+  if (n<2) {
+    stop("Sample must be of size 2 or greater")
+  }
+  x_mean = mean(x)
+  #s = sd(x)
+  s = sqrt((1/(n-1))*sum((x-x_mean)^2))
+  if (s<=0) {
+    stop("Standard deviation of the data must be greater than 0")
+  }
+  deg_free = n-1
+  t_stat = (x_mean - comparison_mean)/(s/sqrt(n))
+  T_dist = StudentsT(df = deg_free)
+  if (tails == "greater") {
+    p = 1-cdf(T_dist, t_stat)
+  }else if (tails == "less") {
+    p = cdf(T_dist, t_stat)
+  }else if (tails == "two"){
+    p = 1 - cdf(T_dist, abs(t_stat)) + cdf(T_dist, -abs(t_stat))
+  }else{
+    stop("Tails must equal 1 or 2")
+  }
+  
+  print(paste("n:", n))
+  print(paste("x_mean:", x_mean))
+  print(paste("s:", s))
+  print(paste("df:", deg_free))
+  print(paste("t_stat:", t_stat))
+  print(paste("p:", p))
+}
+
+normal_test_insignificant <- c(1,7,3,4,-3,-6,-2,0)
+normal_test_significant <- c(20,17,23,44)
+missing_data_test <- c(1,7,3,4,-3,-6,-2,0,NA)
+extreme_data_test <- c(-1444443,22349873427,5.4124431323,40123)
+insufficient_data_test <- c(1)
+insufficient_deviation_test <- c(1,1,1)
+one_tailed_test <- c(20,15,3)
+specified_mean_test <- c(10,15,20)
+
+t.test(normal_test_insignificant)
+my_t_test(normal_test_insignificant)
+t.test(normal_test_significant)
+my_t_test(normal_test_significant)
+t.test(missing_data_test)
+my_t_test(missing_data_test)
+t.test(extreme_data_test)
+my_t_test(extreme_data_test)
+t.test(insufficient_data_test)
+my_t_test(insufficient_data_test)
+t.test(insufficient_deviation_test)
+my_t_test(insufficient_deviation_test)
+t.test(one_tailed_test, alternative = "greater")
+my_t_test(one_tailed_test, tails = "greater")
+t.test(specified_mean_test, mu=17)
+my_t_test(specified_mean_test, comparison_mean = 17)
+
+```
