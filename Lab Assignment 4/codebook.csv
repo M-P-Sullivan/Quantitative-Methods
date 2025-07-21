@@ -1,0 +1,45 @@
+variable_name,survey_question
+submission_id,Submission ID
+age,What is your age?
+cups,How many cups of coffee do you typically drink per day?
+where,Where do you typically drink coffee?
+home_brew,How do you brew coffee at home?
+on_the_go,"On the go, where do you typically purchase coffee?"
+favorite_drink,What is your favorite coffee drink?
+favorite_drink_other,Please specify what your favorite coffee drink is
+add,Do you usually add anything to your coffee?
+prefer_kind,"Before today's tasting, which of the following best described what kind of coffee you like?"
+prefer_strength,How strong do you like your coffee?
+prefer_roast,What roast level of coffee do you prefer?
+prefer_caffeine,How much caffeine do you like in your coffee?
+self_experience,"Lastly, how would you rate your own coffee expertise?"
+a_bitterness,Coffee A - Bitterness
+a_acidity,Coffee A - Acidity
+a_preference,Coffee A - Personal Preference
+b_bitterness,Coffee B - Bitterness
+b_acidity,Coffee B - Acidity
+b_preference,Coffee B - Personal Preference
+c_bitterness,Coffee C - Bitterness
+c_acidity,Coffee C - Acidity
+c_preference,Coffee C - Personal Preference
+d_bitterness,Coffee D - Bitterness
+d_acidity,Coffee D - Acidity
+abc_prefer,"Between Coffee A, Coffee B, and Coffee C which did you prefer?"
+work_from,Do you work from home or in person?
+monthly_spending,"In total, much money do you typically spend on coffee in a month?"
+why_coffee,Why do you drink coffee?
+like_taste,Do you like the taste of coffee?
+know_where_from,Do you know where your coffee comes from?
+most_for_cup,What is the most you've ever paid for a cup of coffee?
+most_willing_for_cup,What is the most you'd ever be willing to pay for a cup of coffee?
+cafe_good_value,Do you feel like you’re getting good value for your money when you buy coffee at a cafe?
+equipment_spent,Approximately how much have you spent on coffee equipment in the past 5 years?
+equipment_good_value,Do you feel like you’re getting good value for your money with regards to your coffee equipment?
+gender,Gender
+marital_status,Marital Status
+hh_income,Household Income
+education,Education Level
+ethnicity_race,Ethnicity/Race
+employment,Employment Status
+children,Number of Children
+party,Political Affiliation
